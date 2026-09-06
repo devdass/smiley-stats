@@ -1,6 +1,12 @@
-# smiley-stats
+# 🙂 smiley-stats
 
-A live stats sidebar plugin for the [OpenCode](https://opencode.ai) TUI — token usage, speeds, timings, and cost while you work.
+<div align="center">
+
+**Live token · speed · timing · cost stats for your [OpenCode](https://opencode.ai) sidebar.**
+
+![smiley-stats sidebar](SS.png)
+
+</div>
 
 ## Features
 
