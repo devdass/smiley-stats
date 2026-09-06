@@ -1,0 +1,30 @@
+{
+  "name": "smiley-stats",
+  "version": "0.1.0",
+  "description": "OpenCode TUI plugin — live token, speed, timing, and cost stats in the sidebar",
+  "author": "devdass",
+  "license": "MIT",
+  "type": "module",
+  "main": "./smiley.tsx",
+  "exports": {
+    ".": { "import": "./smiley.tsx" },
+    "./tui": { "import": "./smiley.tsx" }
+  },
+  "files": [
+    "smiley.tsx",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.14",
+    "solid-js": "^1.9.10"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "stats",
+    "tokens",
+    "sidebar"
+  ]
+}
