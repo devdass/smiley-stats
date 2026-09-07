@@ -50,6 +50,7 @@ const SPARKLINE_WIDTH = 10
 interface ModelPoint {
   v: number
   m: string
+  ok?: boolean
 }
 
 function hashStr(s: string): number {
@@ -61,15 +62,20 @@ function hashStr(s: string): number {
 function sparklineBars(
   points: ModelPoint[],
   colorFor: (m: string) => RGBA,
+  muted: RGBA,
 ): Array<{ ch: string; fg: RGBA }> {
   if (points.length === 0) return []
   const last = points.length > SPARKLINE_WIDTH ? points.slice(-SPARKLINE_WIDTH) : points
-  const vals = last.map((p) => p.v)
-  const min = Math.min(...vals)
-  const max = Math.max(...vals)
+  const vals = last.filter((p) => p.ok !== false).map((p) => p.v)
+  const min = vals.length ? Math.min(...vals) : 0
+  const max = vals.length ? Math.max(...vals) : 1
   const range = max - min || 1
   const out: Array<{ ch: string; fg: RGBA }> = []
   for (const p of last) {
+    if (p.ok === false) {
+      out.push({ ch: " ", fg: muted })
+      continue
+    }
     const idx = Math.round(((p.v - min) / range) * (SPARKLINE_CHARS.length - 1))
     out.push({ ch: SPARKLINE_CHARS[idx], fg: colorFor(p.m) })
   }
@@ -362,15 +368,20 @@ function computeStats(api: Parameters<TuiPlugin>[0], sessionID: string) {
 
   const speeds: ModelPoint[] = []
   const ttfts: ModelPoint[] = []
-  for (let i = assistants.length - 1; i >= 0 && speeds.length < SPARKLINE_WIDTH; i--) {
-    const m = assistants[i]
+  for (const m of assistants.slice(-SPARKLINE_WIDTH)) {
     const model = m.modelID || "unknown"
     if (m.time?.created && m.time?.completed) {
       const dur = (m.time.completed - m.time.created) / 1000
-      if (dur > 0) speeds.push({ v: (m.tokens?.output || 0) / dur, m: model })
+      if (dur > 0) {
+        speeds.push({ v: (m.tokens?.output || 0) / dur, m: model, ok: true })
+      } else {
+        speeds.push({ v: 0, m: model, ok: false })
+      }
+    } else {
+      speeds.push({ v: 0, m: model, ok: false })
     }
-    if (m.time?.created && m.time?.completed) {
-      let t: number | null = null
+    let t: number | null = null
+    if (m.time?.created) {
       for (const p of partList(api, m.id)) {
         if ((p.type === "text" || p.type === "reasoning") && p.time?.start) {
           const d = p.time.start - m.time.created
@@ -380,11 +391,9 @@ function computeStats(api: Parameters<TuiPlugin>[0], sessionID: string) {
           }
         }
       }
-      if (t !== null) ttfts.push({ v: t, m: model })
     }
+    ttfts.push(t !== null ? { v: t, m: model, ok: true } : { v: 0, m: model, ok: false })
   }
-  speeds.reverse()
-  ttfts.reverse()
 
   let add = 0
   let del = 0
@@ -497,7 +506,7 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
   })
 
   return (
-    <box flexDirection="column" paddingTop={1} paddingBottom={1} gap={1}>
+    <box flexDirection="column" paddingTop={1} paddingBottom={1}>
       <text style={{ fg: t().text, fontWeight: "bold" }}>{"\u263A"} Live Stats</text>
       <text style={{ fg: t().textMuted }}>
         {isGenerating() ? waveDots(spin()) : "\u00B7".repeat(WAVE_W)}
@@ -554,11 +563,11 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
                 {PAD +
                   "model".padEnd(13) +
                   " " +
-                  "out".padStart(6) +
+                  "out".padEnd(6) +
                   " " +
-                  "t/s".padStart(5) +
+                  "t/s".padEnd(5) +
                   " " +
-                  "$".padStart(8)}
+                  "$".padEnd(8)}
               </text>
             </box>
             <For each={s().models}>
@@ -566,11 +575,11 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
                 <box flexDirection="row">
                   <text style={{ fg: colorFor(m.key) }}>{PAD + m.name.padEnd(13) + " "}</text>
                   <text style={{ fg: t().text }}>
-                    {fmt(m.output).padStart(6) +
+                    {fmt(m.output).padEnd(6) +
                       " " +
-                      fmtTps(m.avgTps).padStart(5) +
+                      fmtTps(m.avgTps).padEnd(5) +
                       " " +
-                      shortCost(m.cost).padStart(8)}
+                      shortCost(m.cost).padEnd(8)}
                   </text>
                 </box>
               )}
@@ -580,11 +589,11 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
                 {PAD + "TOTALS".padEnd(13) + " "}
               </text>
               <text style={{ fg: t().text, fontWeight: "bold" }}>
-                {fmt(s().totalOut).padStart(6) +
+                {fmt(s().totalOut).padEnd(6) +
                   " " +
-                  fmtTps(s().avgTps).padStart(5) +
+                  fmtTps(s().avgTps).padEnd(5) +
                   " " +
-                  shortCost(s().cost).padStart(8)}
+                  shortCost(s().cost).padEnd(8)}
               </text>
             </box>
             <text style={{ fg: t().textMuted }}>{PAD + SEP}</text>
@@ -647,7 +656,7 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
               <box flexDirection="row" gap={1}>
                 <text style={{ fg: t().textMuted }}>{PAD + "tok/s"}</text>
                 <box flexDirection="row">
-                  <For each={sparklineBars(s().speeds, colorFor)}>
+                  <For each={sparklineBars(s().speeds, colorFor, t().textMuted)}>
                     {(b) => <text style={{ fg: b.fg }}>{b.ch}</text>}
                   </For>
                 </box>
@@ -658,7 +667,7 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
               <box flexDirection="row" gap={1}>
                 <text style={{ fg: t().textMuted }}>{PAD + "ttft".padEnd(5)}</text>
                 <box flexDirection="row">
-                  <For each={sparklineBars(s().ttfts, colorFor)}>
+                  <For each={sparklineBars(s().ttfts, colorFor, t().textMuted)}>
                     {(b) => <text style={{ fg: b.fg }}>{b.ch}</text>}
                   </For>
                 </box>
