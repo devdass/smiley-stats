@@ -4,9 +4,9 @@ import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/p
 
 type RGBA = TuiThemeCurrent["primary"]
 
-const PAD = "  "
+const PAD = ""
 const SEP = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-const WAVE_W = 37
+const WAVE_W = 35
 
 function waveDots(t: number): string {
   return Array.from({ length: WAVE_W }, (_, i) => {
@@ -506,7 +506,7 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
   })
 
   return (
-    <box flexDirection="column" paddingTop={1} paddingBottom={1}>
+    <box flexDirection="column">
       <text style={{ fg: t().text, fontWeight: "bold" }}>{"\u263A"} Live Stats</text>
       <text style={{ fg: t().textMuted }}>
         {isGenerating() ? waveDots(spin()) : "\u00B7".repeat(WAVE_W)}
@@ -553,7 +553,7 @@ function StatsView(props: { api: Parameters<TuiPlugin>[0]; sessionID: string }) 
             </box>
             <box flexDirection="row" gap={1}>
               <text style={{ fg: t().textMuted }}>{PAD + "model".padEnd(5)}</text>
-              <text style={{ fg: colorFor(s().last.model) }}>{s().last.model}</text>
+              <text style={{ fg: colorFor(s().last.model) }}>{modelShort(s().last.model)}</text>
             </box>
             <text style={{ fg: t().textMuted }}>{PAD + SEP}</text>
 
